@@ -129,7 +129,7 @@ st.pyplot(fig)
 model_features = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'CURSMOKE', 'CIGPDAY', 'BMI', 'DIABETES', 'BPMEDS', 'GLUCOSE']
 # model_features = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'DIABETES', 'GLUCOSE']
 target_variable = 'ANYCHD'
-st.table(df['ANYCHD'].describe())
+
 df = df.dropna(subset=model_features + [target_variable])
 
 X = df[model_features]
@@ -180,3 +180,4 @@ else:
     "\nClassification Report:"
     st.dataframe(classification_report(y_test, y_pred, output_dict=True))
 
+st.radio('Select for which models you want to display the AUC curves', ['Logistic Regression', 'Random Forest', 'Gradient Boost', 'SVM', 'Catboost'])
