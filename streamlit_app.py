@@ -22,8 +22,12 @@ from sklearn.preprocessing import StandardScaler
 
 st.title("☝️🤓End Project Presentation 📚")
 st.write(
-    "Presented by Malaika Paddison and Yahya Loughribi."
+    "*Presented by Malaika Paddison and Yahya Loughribi.*"
 )
+
+st.write("# Research Questions:")
+st.write("Which variables have an impact on predicting the target 'ANYCHD'?")
+st.write("Which variables have the *most* impact on the prediction of target 'ANYCHD'?")
 
 df = pd.read_csv('https://raw.githubusercontent.com/LUCE-Blockchain/Databases-for-teaching/refs/heads/main/Framingham%20Dataset.csv')
 
@@ -106,11 +110,10 @@ missing_info = missing_info[missing_info > 0]
 
 numeric_df = df.select_dtypes(include='number').drop(columns=['RANDID', 'TIME'])
 corr = numeric_df.corr()
-mask = np.logical_and(corr > -0.15, corr < 0.15)
+mask = np.logical_and(corr > -0.1, corr < 0.1)
 
-fig, ax = plt.subplots(figsize = (20, 20))
+fig, ax = plt.subplots(figsize = (35, 25))
 sns.heatmap(corr, 
-            mask=mask, 
             cmap='Blues', 
             annot=True, 
             fmt=".2f", 
@@ -124,8 +127,9 @@ plt.title('Correlation Heatmap with Filtered Values', fontsize=20)
 st.pyplot(fig)
 
 model_features = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'CURSMOKE', 'CIGPDAY', 'BMI', 'DIABETES', 'BPMEDS', 'GLUCOSE']
+# model_features = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'BMI', 'DIABETES', 'GLUCOSE']
 target_variable = 'ANYCHD'
-
+st.table(df['ANYCHD'].describe())
 df = df.dropna(subset=model_features + [target_variable])
 
 X = df[model_features]
@@ -152,7 +156,7 @@ elif model_sel == 'Gradient Boost':
 elif model_sel == 'SVM':
     model = SVC(probability=True, kernel='rbf', random_state=42)
 elif model_sel == 'Catboost':
-    model = CatBoostRegressor(iterations=500, learning_rate=0.1, depth=6, verbose=0)
+    model = CatBoostClassifier(iterations=500, learning_rate=0.1, depth=6, verbose=0)
 
 model.fit(X_train, y_train)
 
@@ -175,3 +179,4 @@ else:
     f"ROC-AUC: {roc_auc:.2f}"
     "\nClassification Report:"
     st.dataframe(classification_report(y_test, y_pred, output_dict=True))
+
