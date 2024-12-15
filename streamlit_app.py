@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import time
 import matplotlib.pyplot as plt 
 import seaborn as sns 
 from sklearn.impute import KNNImputer
@@ -141,7 +142,6 @@ X_scaled = scaler.fit_transform(X)
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
 model_sel = st.selectbox('Select the classifier of the model', ('Logistic Regression', 'Random Forest', 'Gradient Boost', 'SVM'))
-
 if model_sel == 'Logistic Regression':
     model = LogisticRegression(random_state=42)
 elif model_sel == 'Random Forest':
@@ -157,11 +157,11 @@ elif model_sel == 'SVM':
     model = SVC(probability=True, kernel='rbf', random_state=42)
 
 model.fit(X_train, y_train)
-
-# Make predictions
 y_pred = model.predict(X_test)
-# Evaluate the model
 accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
 y_pred_prob = model.predict_proba(X_test)[:, 1]
 roc_auc = roc_auc_score(y_test, y_pred_prob)
 "Model Performance:"
@@ -170,7 +170,6 @@ f"ROC-AUC: {roc_auc:.2f}"
 "\nClassification Report:"
 st.dataframe(classification_report(y_test, y_pred, output_dict=True))
 fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
-roc_auc = roc_auc_score(y_test, y_pred_prob)
 auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
 auc_data.to_csv('auc_data.csv', index=False)
 accuracy = accuracy_score(y_test, y_pred)
@@ -302,37 +301,135 @@ f"Accuracy: {accuracy:.2f}"
 f"ROC-AUC: {roc_auc:.2f}"
 "\nClassification Report:"
 st.dataframe(classification_report(y_test_machine, y_pred_machine, output_dict=True))
+fpr, tpr, thresholds = roc_curve(y_test_machine, y_pred_prob_machine)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data.csv', index=False)
+accuracy = accuracy_score(y_test_machine, y_pred_machine)
+precision = precision_score(y_test_machine, y_pred_machine)
+recall = recall_score(y_test_machine, y_pred_machine)
+f1 = f1_score(y_test_machine, y_pred_machine)
+'\n'
+f"Accuracy: {accuracy:.2f}"
+f"Precision: {precision:.2f}"
+f"Recall: {recall:.2f}"
+f"F1 Score: {f1:.2f}"
+'\n'
+if model_sel == 'Random Forest (Machine)':
+    model_features = ['SYSBP', 'HYPERTEN', 'SEX', 'AGE', 'DIABETES']
+    feature_importances = pd.DataFrame(
+    {'Feature': model_features, 'Importance': model.feature_importances_}
+    ).sort_values(by='Importance', ascending=False)
+    "\nFeature Importance:"
+    st.dataframe(feature_importances)
+fig, ax = plt.subplots(figsize = (8, 6))
+plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--', lw=2, label='Random guess')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate', fontsize=12)
+plt.ylabel('True Positive Rate', fontsize=12)
+plt.title('Receiver Operating Characteristic (ROC) Curve', fontsize=14)
+plt.legend(loc="lower right", fontsize=12)
+plt.grid(alpha=0.3)
+st.pyplot(fig)
+
+# Man all models
+model_features = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'CURSMOKE', 'CIGPDAY', 'BMI', 'DIABETES', 'BPMEDS', 'GLUCOSE', 'SEX']
+target_variable = 'ANYCHD'
+df = df.dropna(subset=model_features + [target_variable])
+X = df[model_features]
+y = df[target_variable]
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+
+model = LogisticRegression(random_state=42)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+y_pred_prob = model.predict_proba(X_test)[:, 1]
+roc_auc = roc_auc_score(y_test, y_pred_prob)
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_lg.csv', index=False)
+
+model = RandomForestClassifier(
+n_estimators=500,
+max_depth=2,
+random_state=42,
+min_samples_split=2,
+min_samples_leaf=1)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+y_pred_prob = model.predict_proba(X_test)[:, 1]
+roc_auc = roc_auc_score(y_test, y_pred_prob)
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_rf.csv', index=False)
+
+model = XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss')
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+y_pred_prob = model.predict_proba(X_test)[:, 1]
+roc_auc = roc_auc_score(y_test, y_pred_prob)
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_gb.csv', index=False)
+
+model = SVC(probability=True, kernel='rbf', random_state=42)
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+y_pred_prob = model.predict_proba(X_test)[:, 1]
+roc_auc = roc_auc_score(y_test, y_pred_prob)
+fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_svm.csv', index=False)
+
+auc_data_lr = pd.read_csv('auc_data_lg.csv')  # Logistic Regression
+auc_data_rf = pd.read_csv('auc_data_rf.csv')  # Random Forest
+auc_data_xgb = pd.read_csv('auc_data_gb.csv')  # XGBoost
+auc_data_svm = pd.read_csv('auc_data_svm.csv')  # SVM
+
+# Extract FPR and TPR for each model
+fpr_lr, tpr_lr = auc_data_lr['FPR'], auc_data_lr['TPR']
+fpr_rf, tpr_rf = auc_data_rf['FPR'], auc_data_rf['TPR']
+fpr_xgb, tpr_xgb = auc_data_xgb['FPR'], auc_data_xgb['TPR']
+fpr_svm, tpr_svm = auc_data_svm['FPR'], auc_data_svm['TPR']
+
+fig, ax = plt.subplots(figsize = (10, 8))
+plt.plot(fpr_lr, tpr_lr, label='Logistic Regression', color='blue', lw=2)
+plt.plot(fpr_rf, tpr_rf, label='Random Forest', color='green', lw=2)
+plt.plot(fpr_xgb, tpr_xgb, label='XGBoost', color='orange', lw=2)
+plt.plot(fpr_svm, tpr_svm, label='SVM', color='red', lw=2)
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--', lw=1, label='Random guess')
+
+# Plot formatting
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate', fontsize=12)
+plt.ylabel('True Positive Rate', fontsize=12)
+plt.title('Comparison of ROC Curves for All Models', fontsize=14)
+plt.legend(loc="lower right", fontsize=12)
+plt.grid(alpha=0.3)
+
+# Show plot
+st.pyplot(fig)
 
 st.title('Model Comparison Man vs Machine 🏋🏻‍♀️')
-
-'Please select your contestant(s)'
-man_check = st.checkbox('Man', True)
-machine_check = st.checkbox('Machine')
-
-if man_check == True:
-    model_features = ['AGE', 'TOTCHOL', 'SYSBP', 'DIABP', 'CURSMOKE', 'CIGPDAY', 'BMI', 'DIABETES', 'BPMEDS', 'GLUCOSE', 'SEX']
-    target_variable = 'ANYCHD'
-    
-    df = df.dropna(subset=model_features + [target_variable])
-    X = df[model_features]
-    y = df[target_variable]
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-elif machine_check == True:
-    numeric_df = numeric_df[['SYSBP', 'HYPERTEN', 'SEX', 'AGE', 'DIABETES', 'ANYCHD']]
-    X_machine = numeric_df.drop('ANYCHD', axis = 1)
-    y_machine = numeric_df['ANYCHD']
-    scaler = StandardScaler()
-    X_machine_scaled = scaler.fit_transform(X_machine)
-    X_train_machine, X_test_machine, y_train_machine, y_test_machine = train_test_split(X_machine_scaled, y_machine, test_size=0.2, random_state=42)
-elif man_check == False and machine_check == False:
-    'No contestant is selected.'
-    '\nPlease select at least one or select both options to compare'
-'\n'
-'\n'
-'\nPlease select the models you wish to compare'
-LR_check = st.checkbox('Logistic Regression')
-RF_check = st.checkbox('Random Forest')
-GB_check = st.checkbox('Gradient Boost')
-SVM_check = st.checkbox('SVM')
+st.subheader('Select the contestant')
+cont_sel = st.selectbox('', ('Man', 'Machine'))
