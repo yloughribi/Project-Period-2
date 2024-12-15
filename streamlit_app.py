@@ -346,12 +346,13 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, 
 model = LogisticRegression(random_state=42)
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
+accuracy_lr = accuracy_score(y_test, y_pred)
 precision = precision_score(y_test, y_pred)
 recall = recall_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred)
 y_pred_prob = model.predict_proba(X_test)[:, 1]
 roc_auc = roc_auc_score(y_test, y_pred_prob)
+roc_auc_lr = roc_auc
 fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
 auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
 auc_data.to_csv('auc_data_lg.csv', index=False)
@@ -364,12 +365,13 @@ min_samples_split=2,
 min_samples_leaf=1)
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
+accuracy_rf = accuracy_score(y_test, y_pred)
 precision = precision_score(y_test, y_pred)
 recall = recall_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred)
 y_pred_prob = model.predict_proba(X_test)[:, 1]
 roc_auc = roc_auc_score(y_test, y_pred_prob)
+roc_auc_rf = roc_auc
 fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
 auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
 auc_data.to_csv('auc_data_rf.csv', index=False)
@@ -377,12 +379,13 @@ auc_data.to_csv('auc_data_rf.csv', index=False)
 model = XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss')
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
+accuracy_gb = accuracy_score(y_test, y_pred)
 precision = precision_score(y_test, y_pred)
 recall = recall_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred)
 y_pred_prob = model.predict_proba(X_test)[:, 1]
 roc_auc = roc_auc_score(y_test, y_pred_prob)
+roc_auc_gb = roc_auc
 fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
 auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
 auc_data.to_csv('auc_data_gb.csv', index=False)
@@ -390,12 +393,13 @@ auc_data.to_csv('auc_data_gb.csv', index=False)
 model = SVC(probability=True, kernel='rbf', random_state=42)
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
+accuracy_svm = accuracy_score(y_test, y_pred)
 precision = precision_score(y_test, y_pred)
 recall = recall_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred)
 y_pred_prob = model.predict_proba(X_test)[:, 1]
 roc_auc = roc_auc_score(y_test, y_pred_prob)
+roc_auc_svm = roc_auc
 fpr, tpr, thresholds = roc_curve(y_test, y_pred_prob)
 auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
 auc_data.to_csv('auc_data_svm.csv', index=False)
@@ -427,9 +431,96 @@ plt.title('Comparison of ROC Curves for All Models', fontsize=14)
 plt.legend(loc="lower right", fontsize=12)
 plt.grid(alpha=0.3)
 
-# Show plot
-st.pyplot(fig)
+# Machine all plots
+numeric_df = numeric_df[['SYSBP', 'HYPERTEN', 'SEX', 'AGE', 'DIABETES', 'ANYCHD']]
+X_machine = numeric_df.drop('ANYCHD', axis = 1)
+y_machine = numeric_df['ANYCHD']
+scaler = StandardScaler()
+X_machine_scaled = scaler.fit_transform(X_machine)
+X_train_machine, X_test_machine, y_train_machine, y_test_machine = train_test_split(X_machine_scaled, y_machine, test_size=0.2, random_state=42)
+
+model = LogisticRegression(random_state=42)
+model.fit(X_train_machine, y_train_machine)
+y_pred_machine = model.predict(X_test_machine)
+accuracy_lr_m = accuracy_score(y_test_machine, y_pred_machine)
+y_pred_prob_machine = model.predict_proba(X_test_machine)[:, 1]
+roc_auc = roc_auc_score(y_test_machine, y_pred_prob_machine)
+roc_lr_m = roc_auc
+fpr, tpr, thresholds = roc_curve(y_test_machine, y_pred_prob_machine)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_lg_machine.csv', index=False)
+
+model = RandomForestClassifier(
+n_estimators=500,
+max_depth=2,
+random_state=42,
+min_samples_split=2,
+min_samples_leaf=1)
+model.fit(X_train_machine, y_train_machine)
+y_pred_machine = model.predict(X_test_machine)
+accuracy_rf_m = accuracy_score(y_test_machine, y_pred_machine)
+y_pred_prob_machine = model.predict_proba(X_test_machine)[:, 1]
+roc_auc = roc_auc_score(y_test_machine, y_pred_prob_machine)
+roc_rf_m = roc_auc
+fpr, tpr, thresholds = roc_curve(y_test_machine, y_pred_prob_machine)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_rf_machine.csv', index=False)
+
+model = XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss')
+model.fit(X_train_machine, y_train_machine)
+y_pred_machine = model.predict(X_test_machine)
+accuracy_gb_m = accuracy_score(y_test_machine, y_pred_machine)
+y_pred_prob_machine = model.predict_proba(X_test_machine)[:, 1]
+roc_auc = roc_auc_score(y_test_machine, y_pred_prob_machine)
+roc_gb_m = roc_auc
+fpr, tpr, thresholds = roc_curve(y_test_machine, y_pred_prob_machine)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_gb_machine.csv', index=False)
+
+model = SVC(probability=True, kernel='rbf', random_state=42)
+model.fit(X_train_machine, y_train_machine)
+y_pred_machine = model.predict(X_test_machine)
+accuracy_svm_m = accuracy_score(y_test_machine, y_pred_machine)
+y_pred_prob_machine = model.predict_proba(X_test_machine)[:, 1]
+roc_auc = roc_auc_score(y_test_machine, y_pred_prob_machine)
+roc_auc_svm_m = roc_auc
+fpr, tpr, thresholds = roc_curve(y_test_machine, y_pred_prob_machine)
+auc_data = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data.to_csv('auc_data_svm_machine.csv', index=False)
+
+auc_data_lr_m = pd.read_csv('auc_data_lg_machine.csv')  # Logistic Regression
+auc_data_rf_m = pd.read_csv('auc_data_rf_machine.csv')  # Random Forest
+auc_data_xgb_m = pd.read_csv('auc_data_gb_machine.csv')  # XGBoost
+auc_data_svm_m = pd.read_csv('auc_data_svm_machine.csv')  # SVM
+
+fpr_lr_m, tpr_lr_m = auc_data_lr_m['FPR'], auc_data_lr_m['TPR']
+fpr_rf_m, tpr_rf_m = auc_data_rf_m['FPR'], auc_data_rf_m['TPR']
+fpr_xgb_m, tpr_xgb_m = auc_data_xgb_m['FPR'], auc_data_xgb_m['TPR']
+fpr_svm_m, tpr_svm_m = auc_data_svm_m['FPR'], auc_data_svm_m['TPR']
+
+fig2, ax = plt.subplots(figsize = (10, 8))
+plt.plot(fpr_lr_m, tpr_lr_m, label='Logistic Regression', color='blue', lw=2)
+plt.plot(fpr_rf_m, tpr_rf_m, label='Random Forest', color='green', lw=2)
+plt.plot(fpr_xgb_m, tpr_xgb_m, label='XGBoost', color='orange', lw=2)
+plt.plot(fpr_svm_m, tpr_svm_m, label='SVM', color='red', lw=2)
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--', lw=1, label='Random guess')
+
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate', fontsize=12)
+plt.ylabel('True Positive Rate', fontsize=12)
+plt.title('Comparison of ROC Curves for All Models', fontsize=14)
+plt.legend(loc="lower right", fontsize=12)
+plt.grid(alpha=0.3)
+
 
 st.title('Model Comparison Man vs Machine 🏋🏻‍♀️')
-st.subheader('Select the contestant')
-cont_sel = st.selectbox('', ('Man', 'Machine'))
+st.subheader('Select the contestant(s)')
+st.checkbox('Man')
+st.checkbox('Machine')
+'\n'
+st.subheader('Select the models to compare')
+st.checkbox('Logistic Regression')
+st.checkbox('Random Forest Regression')
+st.checkbox('Gradient Boosting')
+st.checkbox('SVM')
