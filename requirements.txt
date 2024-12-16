@@ -9,3 +9,6 @@ ipywidgets
 ipython
 xgboost
 catboost
+statsmodels
+shap
+shapely

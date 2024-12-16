@@ -20,6 +20,13 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve, precision_score, recall_score, f1_score, classification_report, confusion_matrix
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, ConfusionMatrixDisplay
 from sklearn.preprocessing import StandardScaler
+import statsmodels.api as sm
+import shapely
+import shap
+from sklearn import tree
+from sklearn.inspection import permutation_importance
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
 
 st.title("☝️🤓End Project Presentation 📚")
 st.title('Who is better at feature selection? Man🧔 or Machine🤖?')
@@ -272,6 +279,152 @@ X_machine_scaled = scaler.fit_transform(X_machine)
 
 X_train_machine, X_test_machine, y_train_machine, y_test_machine = train_test_split(X_machine_scaled, y_machine, test_size=0.2, random_state=42)
 
+st.subheader('Odds ratio and 95% Confidence Interval')
+X_train_Sm_m = sm.add_constant(X_train_machine)
+feature_names = ['const'] + list(X_machine.columns)  # Include the constant term
+
+# Fit Logistic Regression (Statsmodels)
+model_sm = sm.Logit(y_train_machine, X_train_Sm_m).fit()
+
+# Get parameters and confidence intervals
+params = model_sm.params
+conf = model_sm.conf_int()
+conf['Odds Ratio'] = params
+conf.columns = ['2.5%', '97.5%', 'Odds Ratio']
+
+# Convert log odds to odds ratios
+odds = pd.DataFrame(np.exp(conf))
+odds['pvalues'] = model_sm.pvalues
+odds['significance'] = ['significant' if pval <= 0.05 else 'not significant' for pval in model_sm.pvalues]
+
+# Assign meaningful feature names
+odds.index = feature_names
+
+# Display odds ratios
+st.dataframe(odds)
+
+# Fit Logistic Regression (sklearn)
+model = LogisticRegression(random_state=42)
+model.fit(X_train_machine, y_train_machine)
+
+# Predict and evaluate
+y_pred_machine = model.predict(X_test_machine)
+accuracy_lr_m = accuracy_score(y_test_machine, y_pred_machine)
+y_pred_prob_machine = model.predict_proba(X_test_machine)[:, 1]
+
+# Display odds ratios for sklearn model
+coeff_parameter = pd.DataFrame(
+    np.transpose(np.exp(model.coef_)),
+    index=X_machine.columns,
+    columns=['Odds ratio']
+)
+st.dataframe(coeff_parameter)
+
+fig, ax = plt.subplots(nrows=1, sharex=True, sharey=True, figsize=(6, 4), dpi=150)
+for idx, row in odds.iloc[::-1].iterrows():
+    ci = [[row['Odds Ratio'] - row[::-1]['2.5%']], [row['97.5%'] - row['Odds Ratio']]]
+    if row['significance'] == 'significant':
+        plt.errorbar(x=[row['Odds Ratio']], y=[row.name], xerr=ci,
+            ecolor='tab:red', capsize=3, linestyle='None', linewidth=1, marker="o", 
+                     markersize=5, mfc="tab:red", mec="tab:red")
+    else:
+        plt.errorbar(x=[row['Odds Ratio']], y=[row.name], xerr=ci,
+            ecolor='tab:gray', capsize=3, linestyle='None', linewidth=1, marker="o", 
+                     markersize=5, mfc="tab:gray", mec="tab:gray")
+plt.axvline(x=1, linewidth=0.8, linestyle='--', color='black')
+plt.tick_params(axis='both', which='major', labelsize=8)
+plt.xlabel('Odds Ratio and 95% Confidence Interval', fontsize=8)
+plt.tight_layout()
+st.pyplot(fig)
+
+st.subheader('Decision Tree')
+model = tree.DecisionTreeClassifier(random_state=1000, max_depth=4, min_samples_leaf=1)
+model.fit(X_train_machine, y_train_machine)
+
+# Predictions and Accuracy
+prediction = model.predict(X_test_machine)
+accuracy = accuracy_score(y_test_machine, prediction)
+roc_auc = roc_auc_score(y_test_machine, y_pred_prob_machine)
+st.write(f"Accuracy for the decision tree is:  {accuracy:.2f}")
+st.write(f"ROC score for the decision tree is: {roc_auc:.2f}")
+"\nClassification Report:"
+st.dataframe(classification_report(y_test_machine, y_pred_machine, output_dict=True))
+fpr, tpr, thresholds = roc_curve(y_test_machine, y_pred_prob_machine)
+auc_data_tree = pd.DataFrame({'FPR': fpr, 'TPR': tpr, 'Thresholds': thresholds})
+auc_data_tree.to_csv('auc_data_tree.csv', index=False)
+text_representation = tree.export_text(model, feature_names=X_machine.columns.tolist())
+# Plotting the Decision Tree
+fig = plt.figure(figsize=(25, 20))
+_ = tree.plot_tree(
+    model,
+    feature_names=X_machine.columns.tolist(),  # Feature names from DataFrame
+    class_names=[str(cls) for cls in y_machine.unique()],  # Class names as strings
+    filled=True
+)
+st.pyplot(fig)
+
+fig_roctree, ax = plt.subplots(figsize = (8, 6))
+plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--', lw=2, label='Random guess')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate', fontsize=12)
+plt.ylabel('True Positive Rate', fontsize=12)
+plt.title('Receiver Operating Characteristic (ROC) Curve', fontsize=14)
+plt.legend(loc="lower right", fontsize=12)
+plt.grid(alpha=0.3)
+st.pyplot(fig_roctree)
+
+feature_names = X_machine.columns.tolist()
+importances = model.feature_importances_  # Feature importances from the tree
+
+# Convert importances to a pandas Series
+forest_importances = pd.Series(importances, index=feature_names)
+
+# Plot feature importances
+fig, ax = plt.subplots(figsize=(6, 4), dpi=150)
+forest_importances.plot.barh(ax=ax)  # Horizontal bar plot
+ax.set_title("Feature importances using MDI")
+ax.set_xlabel("Mean decrease in impurity")
+fig.tight_layout()
+
+st.pyplot(fig)
+
+result = permutation_importance(
+    model, X_test_machine, y_test_machine, n_repeats=10, random_state=42, n_jobs=2
+)
+forest_importances = pd.Series(result.importances_mean, index=feature_names)
+fig, ax = plt.subplots(nrows=1, sharex=True, sharey=True, figsize=(6, 4), dpi=150)
+forest_importances.plot.barh(yerr=result.importances_std, ax=ax)
+ax.set_title("Feature importances using permutation on full model")
+ax.set_ylabel("Mean accuracy decrease")
+fig.tight_layout()
+st.pyplot(fig)
+
+
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_test_machine)
+# Select shap values for the desired class (e.g., class 0 or 1) or for all classes
+# Replace 1 with the desired class index if you need a specific class
+# shap_values_for_class = shap_values[1]  # Selecting SHAP values for the second class (index 1) - This was the problem
+shap_values_for_class = shap_values[:, :, 1] # Selecting SHAP values for the second class (index 1) for all samples
+#shap_values_for_class = shap_values # For all classes (might require different plotting function)
+
+if not isinstance(X_test_machine, pd.DataFrame):
+    X_test_machine = pd.DataFrame(X_test_machine, columns=feature_names)
+
+fig, ax = plt.subplots(nrows=1, sharex=True, sharey=True, figsize=(6, 4), dpi=150)
+shap.summary_plot(shap_values_for_class, X_test_machine, plot_type="dot")
+st.pyplot(fig)
+
+numeric_df = numeric_df[['SYSBP', 'HYPERTEN', 'SEX', 'AGE', 'DIABETES', 'ANYCHD']]
+X_machine = numeric_df.drop('ANYCHD', axis = 1)
+y_machine = numeric_df['ANYCHD']
+scaler = StandardScaler()
+X_machine_scaled = scaler.fit_transform(X_machine)
+
+X_train_machine, X_test_machine, y_train_machine, y_test_machine = train_test_split(X_machine_scaled, y_machine, test_size=0.2, random_state=42)
+
 model_sel = st.selectbox('Select the classifier of the model', ('Logistic Regression (Machine)', 'Random Forest (Machine)', 'Gradient Boost (Machine)', 'SVM (Machine)'))
 
 if model_sel == 'Logistic Regression (Machine)':
@@ -415,7 +568,7 @@ fpr_rf, tpr_rf = auc_data_rf['FPR'], auc_data_rf['TPR']
 fpr_xgb, tpr_xgb = auc_data_xgb['FPR'], auc_data_xgb['TPR']
 fpr_svm, tpr_svm = auc_data_svm['FPR'], auc_data_svm['TPR']
 
-fig, ax = plt.subplots(figsize = (10, 8))
+fig1, ax = plt.subplots(figsize = (10, 8))
 plt.plot(fpr_lr, tpr_lr, label='Logistic Regression', color='blue', lw=2)
 plt.plot(fpr_rf, tpr_rf, label='Random Forest', color='green', lw=2)
 plt.plot(fpr_xgb, tpr_xgb, label='XGBoost', color='orange', lw=2)
@@ -513,14 +666,53 @@ plt.title('Comparison of ROC Curves for All Models', fontsize=14)
 plt.legend(loc="lower right", fontsize=12)
 plt.grid(alpha=0.3)
 
+st.title('Comparing ROC curves of all the models (per Category)')
+st.subheader('Select category')
+cat = st.selectbox('', ('Man', 'Machine', 'Both'))
+
+if cat == 'Man':
+    st.pyplot(fig1)
+elif cat == 'Machine':
+    st.pyplot(fig2)
+elif cat == 'Both':
+    st.pyplot(fig1)
+    st.pyplot(fig2)
+
 
 st.title('Model Comparison Man vs Machine 🏋🏻‍♀️')
-st.subheader('Select the contestant(s)')
-st.checkbox('Man')
-st.checkbox('Machine')
 '\n'
 st.subheader('Select the models to compare')
-st.checkbox('Logistic Regression')
-st.checkbox('Random Forest Regression')
-st.checkbox('Gradient Boosting')
-st.checkbox('SVM')
+sel_lr = st.checkbox('Logistic Regression')
+sel_rf = st.checkbox('Random Forest Regression')
+sel_gb = st.checkbox('Gradient Boosting')
+sel_svm = st.checkbox('SVM')
+
+fig_com, ax = plt.subplots(figsize=(10, 8))
+ax.clear()  # Ensure the plot is cleared before starting a new one
+
+# Add ROC curves for selected models
+if sel_lr:
+    ax.plot(fpr_lr, tpr_lr, label='Logistic Regression (Man)', color='blue', lw=2)
+    ax.plot(fpr_lr_m, tpr_lr_m, label='Logistic Regression (Machine)', color='red', lw=2)
+if sel_rf:
+    ax.plot(fpr_rf, tpr_rf, label='Random Forest (Man)', color='green', lw=2)
+    ax.plot(fpr_rf_m, tpr_rf_m, label='Random Forest (Machine)', color='olive', lw=2)
+if sel_gb:
+    ax.plot(fpr_xgb, tpr_xgb, label='Gradient Boosting (Man)', color='pink', lw=2)
+    ax.plot(fpr_xgb_m, tpr_xgb_m, label='Gradient Boosting (Machine)', color='purple', lw=2)
+if sel_svm:
+    ax.plot(fpr_svm, tpr_svm, label='SVM (Man)', color='orange', lw=2)
+    ax.plot(fpr_svm_m, tpr_svm_m, label='SVM (Machine)', color='brown', lw=2)
+
+# Add common elements to the plot
+ax.plot([0, 1], [0, 1], color='gray', linestyle='--', lw=1, label='Random guess')
+ax.set_xlim([0.0, 1.0])
+ax.set_ylim([0.0, 1.05])
+ax.set_xlabel('False Positive Rate', fontsize=12)
+ax.set_ylabel('True Positive Rate', fontsize=12)
+ax.legend(loc="lower right", fontsize=12)
+ax.grid(alpha=0.3)
+
+# Display the plot in Streamlit
+if st.button('Press to compare'):
+    st.pyplot(fig_com)
