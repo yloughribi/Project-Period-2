@@ -762,3 +762,14 @@ ax.grid(alpha=0.3)
 # Display the plot in Streamlit
 if st.button('Press to compare'):
     st.pyplot(fig_com)
+
+
+st.title('Conclusion')
+'Feature selection is an important process as features might have direct correlations with the target variable but multiple features can have a correlation with each other.'
+'It is also important to test for feature importance as some feature might have a larger effect than others.'
+'\n'
+'In our case, the feature selection has lead to certain features being added and other features being left out.'
+'Furthermore, it turns out that for all models having a higher accuracy than those with hand-selected features.'
+'Important to note is that the only metric in which the hand-selected features prevailed is in the ROC-AUC score of the SVM model with the "Man-made" model having a score of 0.62 and the "Machine" model a score of 0.60'
+'\n'
+'This project has highlighted the importance of feature selection and testing for feature importance to get the best models'
