@@ -21,6 +21,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve, precision_
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report, ConfusionMatrixDisplay
 from sklearn.preprocessing import StandardScaler
 import statsmodels.api as sm
+import scipy.stats as stats
 import shapely
 import shap
 from sklearn import tree
@@ -57,7 +58,6 @@ missing_info = missing_info[missing_info > 0]
 
 # removing people with over 10% of data missing. 39 columns = over 4 values --> remove
 threshold = df.shape[1] - 4
-
 # Drop rows with more than 3 missing values
 df = df.dropna(thresh=threshold)
 columns_for_imputation = ['TOTCHOL', 'AGE', 'SYSBP', 'DIABP', 'BMI']
@@ -121,6 +121,51 @@ numeric_df = df.select_dtypes(include='number').drop(columns=['RANDID', 'TIME'])
 corr = numeric_df.corr()
 mask = np.logical_and(corr > -0.1, corr < 0.1)
 
+st.subheader('Q-Q plots')
+
+# Sample data for four columns
+data1 = df['TOTCHOL']
+data2 = df['BMI']
+data3 = df['HEARTRTE']
+data4 = df['GLUCOSE']
+
+# Create subplots
+fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+
+# Q-Q plot for each dataset
+stats.probplot(data1, dist="norm", plot=axes[0, 0])
+axes[0, 0].set_title("Q-Q Plot for TOTCHOL")
+
+stats.probplot(data2, dist="norm", plot=axes[0, 1])
+axes[0, 1].set_title("Q-Q Plot for BMI")
+
+stats.probplot(data3, dist="norm", plot=axes[1, 0])
+axes[1, 0].set_title("Q-Q Plot for HEARTRTE")
+
+stats.probplot(data4, dist="norm", plot=axes[1, 1])
+axes[1, 1].set_title("Q-Q Plot for GLUCOSE")
+
+# Adjust layout and show
+plt.tight_layout()
+st.pyplot(fig)
+
+fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+# Q-Q plot for each dataset
+stats.probplot(df['SYSBP'], dist="norm", plot=axes[0, 0])
+axes[0, 0].set_title("Q-Q Plot for SYSBP")
+
+stats.probplot(df['DIABP'], dist="norm", plot=axes[0, 1])
+axes[0, 1].set_title("Q-Q Plot for DIABP")
+
+stats.probplot(df['HDLC'], dist="norm", plot=axes[1, 0])
+axes[1, 0].set_title("Q-Q Plot for HDLC")
+
+stats.probplot(df['LDLC'], dist="norm", plot=axes[1, 1])
+axes[1, 1].set_title("Q-Q Plot for LDLC")
+plt.tight_layout()
+st.pyplot(fig) 
+
+st.subheader('Heat Map')
 fig, ax = plt.subplots(figsize = (35, 25))
 sns.heatmap(corr, 
             cmap='Blues', 
@@ -147,7 +192,7 @@ scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
 X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-
+st.title('The "Man-made" models')
 model_sel = st.selectbox('Select the classifier of the model', ('Logistic Regression', 'Random Forest', 'Gradient Boost', 'SVM'))
 if model_sel == 'Logistic Regression':
     model = LogisticRegression(random_state=42)
@@ -425,6 +470,7 @@ X_machine_scaled = scaler.fit_transform(X_machine)
 
 X_train_machine, X_test_machine, y_train_machine, y_test_machine = train_test_split(X_machine_scaled, y_machine, test_size=0.2, random_state=42)
 
+st.title('The "Machine-made" models')
 model_sel = st.selectbox('Select the classifier of the model', ('Logistic Regression (Machine)', 'Random Forest (Machine)', 'Gradient Boost (Machine)', 'SVM (Machine)'))
 
 if model_sel == 'Logistic Regression (Machine)':
